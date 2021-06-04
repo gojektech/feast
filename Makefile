@@ -24,7 +24,7 @@ endif
 
 # General
 
-format: format-python format-go
+format: build-docs format-python format-go
 
 lint: lint-python lint-go
 
@@ -57,16 +57,18 @@ test-python:
 
 format-python:
 	# Sort
-	cd ${ROOT_DIR}/sdk/python; isort feast/ tests/
+	cd ${ROOT_DIR}/sdk/python; isort feast/ tests/ ${ROOT_DIR}//docgen/
 
 	# Format
 	cd ${ROOT_DIR}/sdk/python; black --target-version py37 feast tests
+	cd ${ROOT_DIR}/sdk/python; black --target-version py37 ${ROOT_DIR}/docgen
 
 lint-python:
-	cd ${ROOT_DIR}/sdk/python; mypy feast/ tests/
-	cd ${ROOT_DIR}/sdk/python; isort feast/ tests/ --check-only
-	cd ${ROOT_DIR}/sdk/python; flake8 feast/ tests/
+	cd ${ROOT_DIR}/sdk/python; mypy feast/ tests/ ${ROOT_DIR}/docgen/
+	cd ${ROOT_DIR}/sdk/python; isort feast/ tests/ ${ROOT_DIR}/docgen/ --check-only
+	cd ${ROOT_DIR}/sdk/python; flake8 feast/ tests/ ${ROOT_DIR}/docgen/
 	cd ${ROOT_DIR}/sdk/python; black --check feast tests
+	cd ${ROOT_DIR}/sdk/python; black --check ${ROOT_DIR}/docgen/
 
 # Go SDK
 
@@ -130,3 +132,6 @@ compile-protos-docs:
 
 build-sphinx: compile-protos-python
 	cd 	$(ROOT_DIR)/sdk/python/docs && $(MAKE) build-api-source
+
+build-docs:
+	cd ${ROOT_DIR}/docgen && python render.py
