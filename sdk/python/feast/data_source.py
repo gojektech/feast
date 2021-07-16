@@ -16,6 +16,7 @@
 import enum
 from typing import Callable, Dict, Iterable, Optional, Tuple
 
+from pyarrow import fs
 from pyarrow.parquet import ParquetFile
 
 from feast import type_map
@@ -41,13 +42,26 @@ class SourceType(enum.Enum):
 class FileOptions:
     """
     DataSource File options used to source features from a file
+
     """
 
     def __init__(
-        self, file_format: Optional[FileFormat], file_url: Optional[str],
+        self,
+        file_format: Optional[FileFormat],
+        file_url: Optional[str],
+        s3_endpoint_override: Optional[str],
     ):
+        """
+        FileOptions initialization method
+
+        Args:
+            file_format (FileFormat, optional): file source format eg. parquet
+            file_url (str, optional): file source url eg. s3:// or local file
+            s3_endpoint_override (str, optional): custom s3 endpoint (used only with s3 file_url)
+        """
         self._file_format = file_format
         self._file_url = file_url
+        self._s3_endpoint_override = s3_endpoint_override
 
     @property
     def file_format(self):
@@ -77,6 +91,20 @@ class FileOptions:
         """
         self._file_url = file_url
 
+    @property
+    def s3_endpoint_override(self):
+        """
+        Returns the s3 endpoint override
+        """
+        return self._s3_endpoint_override
+
+    @s3_endpoint_override.setter
+    def s3_endpoint_override(self, s3_endpoint_override):
+        """
+        Sets the s3 endpoint override
+        """
+        self._s3_endpoint_override = s3_endpoint_override
+
     @classmethod
     def from_proto(cls, file_options_proto: DataSourceProto.FileOptions):
         """
@@ -91,6 +119,7 @@ class FileOptions:
         file_options = cls(
             file_format=FileFormat.from_proto(file_options_proto.file_format),
             file_url=file_options_proto.file_url,
+            s3_endpoint_override=file_options_proto.s3_endpoint_override,
         )
         return file_options
 
@@ -107,6 +136,7 @@ class FileOptions:
                 None if self.file_format is None else self.file_format.to_proto()
             ),
             file_url=self.file_url,
+            s3_endpoint_override=self.s3_endpoint_override,
         )
 
         return file_options_proto
@@ -467,6 +497,12 @@ class DataSource:
                 created_timestamp_column=data_source.created_timestamp_column,
                 date_partition_column=data_source.date_partition_column,
             )
+
+            if data_source.file_options.s3_endpoint_override:
+                data_source_obj.file_options.s3_endpoint_override = (
+                    data_source.file_options.s3_endpoint_override
+                )
+
         elif (
             data_source.bigquery_options.table_ref or data_source.bigquery_options.query
         ):
@@ -562,6 +598,7 @@ class FileSource(DataSource):
         created_timestamp_column: Optional[str] = "",
         field_mapping: Optional[Dict[str, str]] = None,
         date_partition_column: Optional[str] = "",
+        s3_endpoint_override: Optional[str] = None,
     ):
         """Create a FileSource from a file containing feature data. Only Parquet format supported.
 
@@ -573,6 +610,7 @@ class FileSource(DataSource):
             created_timestamp_column (optional): Timestamp column when row was created, used for deduplicating rows.
             file_url: [Deprecated] Please see path
             file_format (optional): Explicitly set the file format. Allows Feast to bypass inferring the file format.
+            s3_endpoint_override (optional): Overrides AWS S3 enpoint with custom S3 storage
             field_mapping: A dictionary mapping of column names in this data source to feature names in a feature table
                 or view. Only used for feature columns, not entities or timestamp columns.
 
@@ -592,7 +630,11 @@ class FileSource(DataSource):
         else:
             file_url = path
 
-        self._file_options = FileOptions(file_format=file_format, file_url=file_url)
+        self._file_options = FileOptions(
+            file_format=file_format,
+            file_url=file_url,
+            s3_endpoint_override=s3_endpoint_override,
+        )
 
         super().__init__(
             event_timestamp_column,
@@ -607,6 +649,8 @@ class FileSource(DataSource):
 
         return (
             self.file_options.file_url == other.file_options.file_url
+            and self.file_options.s3_endpoint_override
+            == other.file_options.s3_endpoint_override
             and self.file_options.file_format == other.file_options.file_format
             and self.event_timestamp_column == other.event_timestamp_column
             and self.created_timestamp_column == other.created_timestamp_column
@@ -655,10 +699,25 @@ class FileSource(DataSource):
     def source_datatype_to_feast_value_type() -> Callable[[str], ValueType]:
         return type_map.pa_to_feast_value_type
 
+    @staticmethod
+    def prepare_path(path: str, s3_endpoint_override: str):
+        if path.startswith("s3://"):
+            s3 = fs.S3FileSystem(
+                endpoint_override=s3_endpoint_override if s3_endpoint_override else None
+            )
+            return s3, path.replace("s3://", "")
+        else:
+            return None, path
+
     def get_table_column_names_and_types(
         self, config: RepoConfig
     ) -> Iterable[Tuple[str, str]]:
-        schema = ParquetFile(self.path).schema_arrow
+        filesystem, path = FileSource.prepare_path(
+            self.path, self._file_options.s3_endpoint_override
+        )
+        schema = ParquetFile(
+            path if filesystem is None else filesystem.open_input_file(path)
+        ).schema_arrow
         return zip(schema.names, map(str, schema.types))
 
 
