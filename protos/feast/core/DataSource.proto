@@ -34,6 +34,7 @@ message DataSource {
     STREAM_KAFKA = 3;
     STREAM_KINESIS = 4;
     BATCH_REDSHIFT = 5;
+    BATCH_SQLSERVER = 6;
   }
   SourceType type = 1;
 
@@ -71,6 +72,20 @@ message DataSource {
     // entity columns
     string query = 2;
   }
+
+  // Defines options for DataSource that sources features from a MSSQL Query
+  message SqlServerOptions {
+    // SQLAlchemy-formatted string to SQL Server instance
+    string connection_str = 1;
+
+    // SQL query that returns a table containing feature data. Must contain an event_timestamp column, and respective
+    // entity columns
+    string query = 2;
+
+    // Full table reference in the form of [database.table]
+    string table_ref = 3;
+  }
+
 
   // Defines options for DataSource that sources features from Kafka messages.
   // Each message should be a Protobuf that can be decoded with the generated
@@ -118,5 +133,6 @@ message DataSource {
     KafkaOptions kafka_options = 13;
     KinesisOptions kinesis_options = 14;
     RedshiftOptions redshift_options = 15;
+    SqlServerOptions sqlserver_options = 16;
   }
 }

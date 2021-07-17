@@ -23,6 +23,7 @@ OFFLINE_STORE_CLASS_FOR_TYPE = {
     "file": "feast.infra.offline_stores.file.FileOfflineStore",
     "bigquery": "feast.infra.offline_stores.bigquery.BigQueryOfflineStore",
     "redshift": "feast.infra.offline_stores.redshift.RedshiftOfflineStore",
+    "sqlserver": "feast.infra.offline_stores.sqlserver.SqlServerOfflineStore"
 }
 
 
@@ -36,10 +37,6 @@ class FeastBaseModel(BaseModel):
 
 class FeastConfigBaseModel(BaseModel):
     """ Feast Pydantic Configuration Class """
-
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "forbid"
 
 
 class RegistryConfig(FeastBaseModel):

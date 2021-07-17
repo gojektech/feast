@@ -71,6 +71,11 @@ REDIS_REQUIRED = [
     "redis-py-cluster==2.1.2",
 ]
 
+MSSQL_REQUIRED = [
+    "SQLAlchemy==1.4.19",
+    "pyodbc==4.0.30",
+]
+
 AWS_REQUIRED = [
     "boto3==1.17.*",
 ]
@@ -206,6 +211,7 @@ setup(
         "gcp": GCP_REQUIRED,
         "aws": AWS_REQUIRED,
         "redis": REDIS_REQUIRED,
+        "mssql": MSSQL_REQUIRED
     },
     include_package_data=True,
     license="Apache",
