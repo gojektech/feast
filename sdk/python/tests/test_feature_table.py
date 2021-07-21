@@ -62,7 +62,7 @@ class TestFeatureTable:
                 "ride_duration": "ride_duration",
             },
             file_format=ParquetFormat(),
-            file_url="file://feast/*",
+            path="file://feast/*",
             event_timestamp_column="ts_col",
             created_timestamp_column="timestamp",
             date_partition_column="date_partition_col",

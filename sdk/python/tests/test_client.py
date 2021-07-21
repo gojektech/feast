@@ -26,7 +26,7 @@ import pytest
 import pytz
 from google.protobuf.duration_pb2 import Duration
 from mock import MagicMock, patch
-from pandas.util.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal
 from pyarrow import parquet as pq
 from pytest_lazyfixture import lazy_fixture
 
@@ -405,7 +405,7 @@ class TestClient:
         # Create Feature Tables
         batch_source = FileSource(
             file_format=ParquetFormat(),
-            file_url="file://feast/*",
+            path="file://feast/*",
             event_timestamp_column="ts_col",
             created_timestamp_column="timestamp",
             date_partition_column="date_partition_col",
